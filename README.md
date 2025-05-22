@@ -31,8 +31,8 @@ A state-of-the-art web application to transcribe YouTube videos using Google's G
 
 1.  **Clone the repository:**
     ```bash
-    git clone <repository-url>
-    cd <repository-directory>
+    git clone https://github.com/immunizedcarbon/Test
+    cd Test
     ```
 
 2.  **Install dependencies:**
