@@ -1,0 +1,22 @@
+name: TOHPE Walsh scratch validation
+
+on:
+  push:
+    branches:
+      - scratch/tohpe-walsh-ci-20260723
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: scratch/tohpe-walsh-ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy,rustfmt
+      - run: cargo fmt -- --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test --release
+      - run: cargo run --release
