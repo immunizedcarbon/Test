@@ -127,10 +127,10 @@ new = r'''            let z = if let Some(z) = best_walsh_key(&table, &y, nb_qub
                 let mut map = HashMap::new();
                 let parity = y.popcount() & 1 == 1;
                 for i in 0..table.len() {
-                    if parity && !y.get(i) { 
+                    if parity && !y.get(i) {
                         map.insert(table[i].get_integer_vec(), 1);
                     }
-                    else if !parity && y.get(i) { 
+                    else if !parity && y.get(i) {
                         map.insert(table[i].get_integer_vec(), 1);
                     }
                 }
