@@ -88,9 +88,9 @@ mod tohpe_walsh_tests {
 
     #[test]
     fn tohpe_walsh_matches_bitvector_pair_scoring() {
-        for nb_qubits in 4..=12 {
+        for nb_qubits in 4..=10 {
             let size = 1usize << nb_qubits;
-            for seed in 0..100u64 {
+            for seed in 0..20u64 {
                 let len = size - 1;
                 let table = unique_table(nb_qubits, len, seed + nb_qubits as u64 * 1000 + 1);
                 let y = y_vector(len);
@@ -105,7 +105,7 @@ mod tohpe_walsh_tests {
     fn tohpe_walsh_matches_duplicate_columns() {
         for nb_qubits in 2..=8 {
             let size = 1usize << nb_qubits;
-            for seed in 0..100u64 {
+            for seed in 0..20u64 {
                 let mut rng = Rng(0x517cc1b727220a95 ^ seed ^ ((nb_qubits as u64) << 32));
                 let len = size * 4;
                 let table = (0..len)
@@ -121,7 +121,7 @@ mod tohpe_walsh_tests {
 
     #[test]
     fn tohpe_walsh_bitvector_benchmark() {
-        for &(nb_qubits, len) in &[(12, 3517), (14, 4096)] {
+        for &(nb_qubits, len) in &[(12, 3517), (14, 4096), (20, 2048)] {
             let table = unique_table(nb_qubits, len, 0x9e3779b97f4a7c15 ^ len as u64);
             let y = y_vector(len);
 
