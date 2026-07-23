@@ -19,13 +19,19 @@ jobs:
       - run: cargo fmt -- --check
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test --release
-      - run: cargo run --release
-      - run: git clone --depth 1 https://github.com/VivienVandaele/quantum-circuit-optimization.git target
+      - run: cargo run --release | tee benchmark.txt
+      - uses: actions/checkout@v4
+        with:
+          repository: VivienVandaele/quantum-circuit-optimization
+          path: scratch/tohpe-walsh-ci/target
+          persist-credentials: false
       - run: cd target && python ../patch_target.py
       - run: cd target && git diff --check
       - run: cd target && cargo check --release
       - run: cd target && git diff > ../target.patch
       - uses: actions/upload-artifact@v4
         with:
-          name: target-patch
-          path: scratch/tohpe-walsh-ci/target.patch
+          name: validation-output
+          path: |
+            scratch/tohpe-walsh-ci/benchmark.txt
+            scratch/tohpe-walsh-ci/target.patch
