@@ -1,9 +1,9 @@
 name: TOHPE Walsh scratch validation
 
 on:
-  push:
+  pull_request:
     branches:
-      - scratch/tohpe-walsh-ci-20260723
+      - feature/youtube-gemini-transcriber
 
 jobs:
   validate:
