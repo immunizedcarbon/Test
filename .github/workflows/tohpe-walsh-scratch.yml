@@ -29,9 +29,12 @@ jobs:
       - run: cd target && git diff --check
       - run: cd target && cargo check --release
       - run: cd target && git diff > ../target.patch
+      - run: cd target && python ../append_target_tests.py
+      - run: cd target && cargo test --release tohpe_walsh -- --nocapture | tee ../target-test.txt
       - uses: actions/upload-artifact@v4
         with:
           name: validation-output
           path: |
             scratch/tohpe-walsh-ci/benchmark.txt
+            scratch/tohpe-walsh-ci/target-test.txt
             scratch/tohpe-walsh-ci/target.patch
