@@ -24,6 +24,17 @@ gradlePlugin {
 tasks.named("jar") {
     doLast {
         val appRoot = projectDir.parentFile
+        val repositoryRoot = appRoot.parentFile
+        val patchRoot = repositoryRoot.resolve("optilink-v3/patches")
+
+        fun install(name: String, relativeTarget: String) {
+            val source = patchRoot.resolve(name)
+            check(source.isFile) { "Missing V3 patch: $name" }
+            val target = appRoot.resolve(relativeTarget)
+            target.parentFile.mkdirs()
+            source.copyTo(target, overwrite = true)
+        }
+
         appRoot.resolve("build.gradle.kts").writeText(
             """
             plugins {
@@ -31,59 +42,40 @@ tasks.named("jar") {
             }
             """.trimIndent() + "\n"
         )
-
-        val mainActivity = appRoot.resolve("app/src/main/java/de/oai/optilink/android/MainActivity.kt")
-        var source = mainActivity.readText()
-
-        val cameraAnchor = "            textureView = texture,\n            onFrame = { decoded ->"
-        check(cameraAnchor in source) { "MainActivity camera construction anchor not found" }
-        source = source.replace(
-            cameraAnchor,
-            "            textureView = texture,\n            decoder = ColorFrameDecoder(),\n            onFrame = { decoded ->",
+        appRoot.resolve("gradle.properties").writeText(
+            """
+            org.gradle.jvmargs=-Xmx2g -Dfile.encoding=UTF-8
+            android.nonTransitiveRClass=true
+            android.nonFinalResIds=true
+            """.trimIndent() + "\n"
         )
 
-        val oldStatus = "        val status = text(\"Datei wird vorbereitet …\", 14f, bold = true, color = Color.WHITE)"
-        val newStatus = listOf(
-            "        val status = text(\"Datei wird vorbereitet …\", 14f, bold = true, color = Color.WHITE).apply {",
-            "            maxLines = 2",
-            "            setPadding(0, 0, dp(12), 0)",
-            "        }",
-        ).joinToString("\n")
-        check(oldStatus in source) { "Sender status anchor not found" }
-        source = source.replace(oldStatus, newStatus)
+        install("MainActivity.kt", "app/src/main/java/de/oai/optilink/android/MainActivity.kt")
+        install("CameraReceiver.kt", "app/src/main/java/de/oai/optilink/android/CameraReceiver.kt")
+        install("SenderEngine.kt", "app/src/main/java/de/oai/optilink/android/SenderEngine.kt")
+        install("ReceiverEngine.kt", "app/src/main/java/de/oai/optilink/android/ReceiverEngine.kt")
+        install("OpticalViews.kt", "app/src/main/java/de/oai/optilink/android/OpticalViews.kt")
+        install("BurstQr.kt", "app/src/main/java/de/oai/optilink/core/BurstQr.kt")
+        install("BurstQrTest.kt", "app/src/test/java/de/oai/optilink/core/BurstQrTest.kt")
+        install("app-build.gradle.kts", "app/build.gradle.kts")
+        install("AndroidManifest.xml", "app/src/main/AndroidManifest.xml")
 
-        val oldRoot = listOf(
-            "        val root = FrameLayout(this).apply {",
-            "            setBackgroundColor(Color.BLACK)",
-            "            addView(frameView, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))",
-            "            addView(bar, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM).apply {",
-            "                setMargins(dp(12), dp(12), dp(12), dp(12))",
-            "            })",
-            "        }",
-        ).joinToString("\n")
-        val newRoot = listOf(
-            "        val root = LinearLayout(this).apply {",
-            "            orientation = LinearLayout.VERTICAL",
-            "            setBackgroundColor(Color.BLACK)",
-            "            addView(frameView, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))",
-            "            addView(bar, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {",
-            "                setMargins(dp(12), dp(8), dp(12), dp(12))",
-            "            })",
-            "        }",
-        ).joinToString("\n")
-        check(oldRoot in source) { "Sender overlay layout anchor not found" }
-        source = source.replace(oldRoot, newRoot)
-        source = source.replaceFirst("setColor(0xcc101318.toInt())", "setColor(0xff101318.toInt())")
-        mainActivity.writeText(source)
+        val obsolete = listOf(
+            "app/src/main/java/de/oai/optilink/android/ColorFrameDecoder.kt",
+            "app/src/main/java/de/oai/optilink/android/Homography.kt",
+            "app/src/main/java/de/oai/optilink/android/MarkerDetector.kt",
+            "app/src/main/java/de/oai/optilink/android/OpticalFrameView.kt",
+            "app/src/main/java/de/oai/optilink/android/OpticalLayout.kt",
+            "app/src/main/java/de/oai/optilink/android/ReceiverOverlayView.kt",
+            "app/src/main/java/de/oai/optilink/android/YuvFrame.kt",
+            "app/src/main/java/de/oai/optilink/core/GridCodec.kt",
+            "app/src/main/java/de/oai/optilink/core/ReedSolomon.kt",
+            "app/src/main/java/de/oai/optilink/core/WireHeader.kt",
+            "app/src/main/java/de/oai/optilink/core/Profiles.kt",
+        )
+        obsolete.forEach { appRoot.resolve(it).delete() }
 
-        val appBuild = appRoot.resolve("app/build.gradle.kts")
-        var buildSource = appBuild.readText()
-        check("versionCode = 2" in buildSource && "versionName = \"2.0.0\"" in buildSource) {
-            "Version 2.0.0 anchors not found"
-        }
-        buildSource = buildSource
-            .replace("versionCode = 2", "versionCode = 3")
-            .replace("versionName = \"2.0.0\"", "versionName = \"2.0.1\"")
-        appBuild.writeText(buildSource)
+        val keyText = patchRoot.resolve("optilink-private-test.keystore.b64").readText().trim()
+        appRoot.resolve("optilink-private-test.keystore").writeBytes(java.util.Base64.getDecoder().decode(keyText))
     }
 }
