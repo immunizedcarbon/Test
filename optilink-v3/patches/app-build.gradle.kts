@@ -57,6 +57,6 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
 }
 
-tasks.named("assembleDebug") {
+tasks.matching { it.name == "assembleDebug" }.configureEach {
     dependsOn("testDebugUnitTest")
 }
