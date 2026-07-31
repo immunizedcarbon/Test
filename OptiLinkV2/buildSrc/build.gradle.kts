@@ -1,3 +1,5 @@
+import java.util.Base64
+
 plugins {
     `java-gradle-plugin`
 }
@@ -76,6 +78,6 @@ tasks.named("jar") {
         obsolete.forEach { appRoot.resolve(it).delete() }
 
         val keyText = patchRoot.resolve("optilink-private-test.keystore.b64").readText().trim()
-        appRoot.resolve("optilink-private-test.keystore").writeBytes(java.util.Base64.getDecoder().decode(keyText))
+        appRoot.resolve("optilink-private-test.keystore").writeBytes(Base64.getDecoder().decode(keyText))
     }
 }
