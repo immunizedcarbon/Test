@@ -73,7 +73,7 @@ tasks.named("jar") {
         ).joinToString("\n")
         check(oldRoot in source) { "Sender overlay layout anchor not found" }
         source = source.replace(oldRoot, newRoot)
-        source = source.replace("setColor(0xcc101318.toInt())", "setColor(0xff101318.toInt())", limit = 1)
+        source = source.replaceFirst("setColor(0xcc101318.toInt())", "setColor(0xff101318.toInt())")
         mainActivity.writeText(source)
 
         val appBuild = appRoot.resolve("app/build.gradle.kts")
