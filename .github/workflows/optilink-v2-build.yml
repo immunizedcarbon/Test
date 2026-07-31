@@ -25,6 +25,8 @@ jobs:
           test -f OptiLinkV2/app/src/main/AndroidManifest.xml
           sed -i 's/compileSdk = 37/compileSdk = 36/' OptiLinkV2/app/build.gradle.kts
           sed -i 's/targetSdk = 37/targetSdk = 36/' OptiLinkV2/app/build.gradle.kts
+          cp optilink-v2/patches/CameraReceiver.kt OptiLinkV2/app/src/main/java/de/oai/optilink/android/CameraReceiver.kt
+          cp optilink-v2/patches/SenderEngine.kt OptiLinkV2/app/src/main/java/de/oai/optilink/android/SenderEngine.kt
 
       - uses: actions/setup-java@v4
         with:
