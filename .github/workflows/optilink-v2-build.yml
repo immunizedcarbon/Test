@@ -3,6 +3,8 @@ name: OptiLink V2 Android Build
 on:
   push:
     branches: [optilink-v2-build-20260731]
+  pull_request:
+    branches: [feature/youtube-gemini-transcriber]
   workflow_dispatch:
 
 permissions:
