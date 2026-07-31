@@ -48,13 +48,21 @@ internal class CameraReceiver(
     private var session: CameraCaptureSession? = null
     private var imageReader: ImageReader? = null
     private var previewSurface: Surface? = null
+    private var previewSize: Size? = null
     private var closed = false
 
     fun start() {
+        textureView.scaleX = 1f
+        textureView.scaleY = 1f
+        textureView.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            previewSize?.let(::configurePreviewTransform)
+        }
         if (textureView.isAvailable) openCamera()
         else textureView.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
             override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) = openCamera()
-            override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) = Unit
+            override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {
+                previewSize?.let(::configurePreviewTransform)
+            }
             override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean { stopCamera(); return true }
             override fun onSurfaceTextureUpdated(surface: SurfaceTexture) = Unit
         }
@@ -70,6 +78,7 @@ internal class CameraReceiver(
                 ?: error("Kamera meldet keine Stream-Konfiguration")
             val size = chooseYuvSize(map.getOutputSizes(ImageFormat.YUV_420_888)?.toList().orEmpty())
                 ?: error("Kamera unterstützt keinen YUV_420_888-Stream")
+            previewSize = size
             val ranges = characteristics.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES)?.toList().orEmpty()
             val fps = chooseFpsRange(ranges)
             val level = characteristics.get(CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL) ?: -1
@@ -126,14 +135,35 @@ internal class CameraReceiver(
 
     private fun configurePreviewTransform(size: Size) {
         textureView.post {
-            val viewRect = RectF(0f, 0f, textureView.width.toFloat(), textureView.height.toFloat())
-            val bufferRect = RectF(0f, 0f, size.height.toFloat(), size.width.toFloat())
-            val centerX = viewRect.centerX(); val centerY = viewRect.centerY()
-            bufferRect.offset(centerX - bufferRect.centerX(), centerY - bufferRect.centerY())
+            val viewWidth = textureView.width.toFloat()
+            val viewHeight = textureView.height.toFloat()
+            if (viewWidth <= 0f || viewHeight <= 0f) return@post
+
+            val rotation = textureView.display?.rotation ?: Surface.ROTATION_0
+            val viewRect = RectF(0f, 0f, viewWidth, viewHeight)
+            val centerX = viewRect.centerX()
+            val centerY = viewRect.centerY()
             val matrix = Matrix()
-            matrix.setRectToRect(viewRect, bufferRect, Matrix.ScaleToFit.FILL)
-            val scale = maxOf(textureView.height.toFloat() / size.height, textureView.width.toFloat() / size.width)
-            matrix.postScale(scale, scale, centerX, centerY)
+
+            when (rotation) {
+                Surface.ROTATION_90, Surface.ROTATION_270 -> {
+                    val bufferRect = RectF(0f, 0f, size.height.toFloat(), size.width.toFloat())
+                    bufferRect.offset(centerX - bufferRect.centerX(), centerY - bufferRect.centerY())
+                    matrix.setRectToRect(viewRect, bufferRect, Matrix.ScaleToFit.FILL)
+                    val scale = maxOf(viewHeight / size.height, viewWidth / size.width)
+                    matrix.postScale(scale, scale, centerX, centerY)
+                    val degrees = if (rotation == Surface.ROTATION_90) -90f else 90f
+                    matrix.postRotate(degrees, centerX, centerY)
+                }
+                Surface.ROTATION_180 -> matrix.postRotate(180f, centerX, centerY)
+                else -> {
+                    val scale = maxOf(viewWidth / size.width, viewHeight / size.height)
+                    matrix.postScale(scale, scale, centerX, centerY)
+                }
+            }
+
+            textureView.scaleX = 1f
+            textureView.scaleY = 1f
             textureView.setTransform(matrix)
         }
     }
@@ -162,6 +192,7 @@ internal class CameraReceiver(
         camera?.close(); camera = null
         imageReader?.close(); imageReader = null
         previewSurface?.release(); previewSurface = null
+        previewSize = null
     }
 
     override fun close() {
