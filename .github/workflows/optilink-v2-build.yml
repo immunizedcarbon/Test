@@ -1,0 +1,62 @@
+name: OptiLink V2 Android Build
+
+on:
+  push:
+    branches: [optilink-v2-build-20260731]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore transparent source archive
+        shell: bash
+        run: |
+          cat optilink-v2/source2/part-* | base64 --decode > /tmp/optilink-v2.tar.gz
+          tar -xzf /tmp/optilink-v2.tar.gz
+          test -f OptiLinkV2/app/src/main/AndroidManifest.xml
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK 37
+        run: sdkmanager "platforms;android-37" "build-tools;36.0.0"
+
+      - name: Build debug APK
+        working-directory: OptiLinkV2
+        run: gradle --no-daemon :app:assembleDebug --stacktrace
+
+      - name: Verify APK
+        working-directory: OptiLinkV2
+        shell: bash
+        run: |
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          TOOLS="$ANDROID_HOME/build-tools/36.0.0"
+          "$TOOLS/apksigner" verify --verbose --print-certs "$APK" | tee ci-report.txt
+          "$TOOLS/zipalign" -c -P 16 -v 4 "$APK" | tail -5 | tee -a ci-report.txt
+          "$TOOLS/aapt2" dump badging "$APK" | tee -a ci-report.txt
+          "$TOOLS/aapt2" dump permissions "$APK" | tee -a ci-report.txt
+          sha256sum "$APK" | tee -a ci-report.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OptiLink-V2-2.0.0-debug
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            OptiLinkV2/app/build/outputs/apk/debug/app-debug.apk
+            OptiLinkV2/ci-report.txt
