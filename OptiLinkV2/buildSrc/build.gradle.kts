@@ -20,3 +20,15 @@ gradlePlugin {
         }
     }
 }
+
+tasks.named("jar") {
+    doLast {
+        projectDir.parentFile.resolve("build.gradle.kts").writeText(
+            """
+            plugins {
+                id("com.android.application") apply false
+            }
+            """.trimIndent() + "\n"
+        )
+    }
+}
