@@ -33,7 +33,7 @@ jobs:
           set -euxo pipefail
           trap 'echo EMULATOR_DIAGNOSTICS; tail -100 /tmp/emulator.log || true; echo ADB_DEVICES; adb devices -l || true' EXIT
           adb start-server
-          nohup emulator -avd demos-api37 -no-window -noaudio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -camera-back none -no-metrics > /tmp/emulator.log 2>&1 &
+          nohup "$ANDROID_HOME/emulator/emulator" -avd demos-api37 -no-window -noaudio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -camera-back none -no-metrics > /tmp/emulator.log 2>&1 &
           emupid=$!
           sleep 5
           kill -0 "$emupid" || { echo 'Emulator process quit'; exit 1; }
