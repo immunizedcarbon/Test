@@ -27,8 +27,9 @@ jobs:
           sources=$(make -s -f makefile --eval='demos_sources: ; @echo $(PDP11) $(SIM)' demos_sources NONETWORK=1 DONT_USE_ROMS=1 | grep '^PDP11/pdp11_fp.c ' | head -1)
           echo "$sources" > sources.txt
           test -n "$sources"
-          CC="$ANDROID_SDK_ROOT/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android37-clang"
-          "$CC" -O2 -fPIE -pie -DVM_PDP11 -DDONT_USE_INTERNAL_ROM -I . -I PDP11 -Wno-error $sources -o libpdp11.so -lm -ldl -pthread 2>&1 | tee compile.log
+          CC="$ANDROID_SDK_ROOT/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin/clang"
+          ls -lah "$ANDROID_SDK_ROOT/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin/" | head
+          "$CC" --target=aarch64-linux-android35 -O2 -fPIE -pie -DVM_PDP11 -DDONT_USE_INTERNAL_ROM -I . -I PDP11 -Wno-error $sources -o libpdp11.so -lm -ldl -pthread 2>&1 | tee compile.log
           file libpdp11.so
           readelf -h libpdp11.so | head -35
       - name: Upload compile proof
