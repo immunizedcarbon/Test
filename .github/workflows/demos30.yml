@@ -35,7 +35,7 @@ jobs:
       - name: Reference smoke boot
         run: |
           set -euxo pipefail
-          cat > reference/test.ini <<'EOF'
+          cat > reference/dvk-demos/test.ini <<'EOF'
           set LPT disable
           set DZ disable
           set cpu 11/23 256k cis idle
@@ -44,7 +44,8 @@ jobs:
           boot kgd0
           EOF
           BIN="$(find "$GITHUB_WORKSPACE/simh-dvk" -type f -name pdp11 -perm /111 | head -1)"
-          cd reference
+          cd reference/dvk-demos
+          cat demos.ini
           find . -type f -iname '*.img' -ls
           timeout 30s script -q -e -c "$BIN test.ini" boot-raw.log || true
           sed -n '1,200p' boot-raw.log | tee ../boot.log
