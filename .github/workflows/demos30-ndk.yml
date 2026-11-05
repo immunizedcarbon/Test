@@ -2,6 +2,8 @@ name: DEMOS30 Android ARM64 crosscompile probe
 on:
   push:
     branches: [demos30-apk-build-20261105]
+    paths:
+      - .github/workflows/demos30-ndk.yml
 permissions:
   contents: read
 jobs:

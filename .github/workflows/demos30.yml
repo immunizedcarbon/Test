@@ -2,6 +2,8 @@ name: DEMOS30 emulator reference and Android research build
 on:
   push:
     branches: [demos30-apk-build-20261105]
+    paths:
+      - .github/workflows/demos30.yml
   workflow_dispatch:
 permissions:
   contents: read
