@@ -28,7 +28,7 @@ echo "Start button tap: $X $Y"
 adb shell input tap "$X" "$Y"
 for i in $(seq 1 60); do
   sleep 2
-  adb logcat -d -v brief > /tmp/demos-logcat.txt
+  adb logcat -d -v brief -s 'DEMOS-guest:I' '*:S' > /tmp/demos-logcat.txt
   if python3 - /tmp/demos-logcat.txt <<'PY'
 import re,sys
 log=open(sys.argv[1],encoding='utf8',errors='replace').read()
