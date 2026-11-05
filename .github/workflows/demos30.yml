@@ -47,7 +47,17 @@ jobs:
           cd reference/dvk-demos
           cat demos.ini
           find . -type f -iname '*.img' -ls
-          timeout 30s script -q -e -c "$BIN test.ini" boot-raw.log || true
+          export BIN
+          timeout 30s expect <<'EOT' || true
+          log_user 1
+          log_file -noappend boot-raw.log
+          set timeout 20
+          spawn $env(BIN) test.ini
+          expect -re {BOOT.*91/01/28}
+          after 250
+          send -- "\r"
+          expect { timeout {} eof {} }
+          EOT
           sed -n '1,200p' boot-raw.log | tee ../boot.log
       - name: Upload logs
         if: always()
