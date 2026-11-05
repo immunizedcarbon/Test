@@ -10,11 +10,10 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
-      - uses: android-actions/setup-android@v3
       - name: Install Android NDK
         run: |
           set -eux
-          sdkmanager --install "ndk;28.2.13676358"
+          "$ANDROID_HOME/cmdline-tools/16.0/bin/sdkmanager" --install "ndk;28.2.13676358"
       - name: Crosscompile pinned DVK core to Android 17 ARM64
         run: |
           set -euxo pipefail
