@@ -58,6 +58,10 @@ jobs:
           expect -re {BOOT.*91/01/28}
           after 250
           send -- "\r"
+          expect -re {ILI.*:}
+          send -- "11051600\r"
+          expect { -re {login:} {} -re {IMQ} {} -re {WVED} {} timeout {} eof {} }
+          send -- "\r"
           expect { timeout {} eof {} }
           EOT
           sed -n '1,200p' boot-raw.log | tee ../boot.log
