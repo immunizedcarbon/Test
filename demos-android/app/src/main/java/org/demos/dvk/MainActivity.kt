@@ -19,6 +19,9 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.RandomAccessFile
 import java.nio.charset.Charset
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.Executors
 
 /** Native Android 17 frontend to the authentic SIMH-DVK hardware emulator. */
@@ -40,6 +43,8 @@ class MainActivity : Activity() {
     @Volatile private var connection = 0L
     @Volatile private var starting = false
     private var bootReturnSent = false
+    private var bootDateSent = false
+    private var fileCheckAccepted = false
 
     private lateinit var status: TextView
     private lateinit var terminal: TextView
@@ -197,6 +202,8 @@ class MainActivity : Activity() {
         if (starting || connection != 0L) return
         starting = true
         bootReturnSent = false
+        bootDateSent = false
+        fileCheckAccepted = false
         start.isEnabled = false
         displayStatus("Bereite DEMOS-Datenträger vor …")
         terminal.text = ""
@@ -233,6 +240,17 @@ class MainActivity : Activity() {
                     if (!bootReturnSent && guest.contains("BOOT (* VERSION")) {
                         bootReturnSent = true
                         nativeWrite(handle, byteArrayOf(13))
+                    }
+                    if (!bootDateSent && guest.contains("ILI (")) {
+                        bootDateSent = true
+                        val localDate = SimpleDateFormat("MMddHHmm", Locale.US).format(Date())
+                        nativeWrite(handle, (localDate + "\r").toByteArray(Charsets.US_ASCII))
+                        displayStatus("DEMOS konfiguriert Systemzeit")
+                    }
+                    if (!fileCheckAccepted && guest.contains("[DA]")) {
+                        fileCheckAccepted = true
+                        nativeWrite(handle, byteArrayOf(13))
+                        displayStatus("DEMOS prüft und mountet Datenträger")
                     }
                     if (guest.contains("Имя:") || guest.contains("login:")) {
                         displayStatus("DEMOS gestartet · Anmeldung bereit")
