@@ -1,0 +1,40 @@
+name: DEMOS30 Android ARM64 crosscompile probe
+on:
+  push:
+    branches: [demos30-apk-build-20261105]
+permissions:
+  contents: read
+jobs:
+  native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: android-actions/setup-android@v3
+      - name: Install Android NDK
+        run: |
+          set -eux
+          sdkmanager --install "ndk;28.2.13676358"
+      - name: Crosscompile pinned DVK core to Android 17 ARM64
+        run: |
+          set -euxo pipefail
+          git clone --filter=blob:none --single-branch --branch simh-dvk https://github.com/shattered/simh.git simh-dvk
+          cd simh-dvk
+          git checkout 6d424e6a2990172eeef283972b592d027b5ec1bc
+          make -s -f makefile --eval='demos_sources: ; @echo $(PDP11) $(SIM)' demos_sources NONETWORK=1 DONT_USE_ROMS=1 | tail -n 10 | tee source-probe.txt
+          sources=$(make -s -f makefile --eval='demos_sources: ; @echo $(PDP11) $(SIM)' demos_sources NONETWORK=1 DONT_USE_ROMS=1 | grep '^PDP11/pdp11_fp.c ' | head -1)
+          echo "$sources" > sources.txt
+          test -n "$sources"
+          CC="$ANDROID_SDK_ROOT/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android37-clang"
+          "$CC" -O2 -fPIE -pie -DVM_PDP11 -DDONT_USE_INTERNAL_ROM -I . -I PDP11 -Wno-error $sources -o libpdp11.so -lm -ldl -pthread 2>&1 | tee compile.log
+          file libpdp11.so
+          readelf -h libpdp11.so | head -35
+      - name: Upload compile proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: demos30-android-ndk-logs
+          path: |
+            simh-dvk/compile.log
+            simh-dvk/sources.txt
+          if-no-files-found: ignore
