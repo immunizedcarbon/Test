@@ -31,13 +31,20 @@ jobs:
       - name: Boot Android and run DEMOS guest verification
         run: |
           set -euxo pipefail
+          trap 'echo EMULATOR_DIAGNOSTICS; tail -100 /tmp/emulator.log || true; echo ADB_DEVICES; adb devices -l || true' EXIT
           adb start-server
           nohup emulator -avd demos-api37 -no-window -noaudio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -camera-back none -no-metrics > /tmp/emulator.log 2>&1 &
-          adb wait-for-device
+          emupid=$!
+          sleep 5
+          kill -0 "$emupid" || { echo 'Emulator process quit'; exit 1; }
+          timeout 90s adb wait-for-device || { echo 'ADB timeout'; exit 1; }
           ready=0
-          for i in $(seq 1 120); do
-            boot="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
-            if [[ "$boot" == "1" ]] && adb shell service check package | grep -q found && adb shell service check input | grep -q found; then ready=1; break; fi
+          for i in $(seq 1 90); do
+            boot="$(timeout 5s adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
+            pkg="$(timeout 5s adb shell service check package 2>/dev/null || true)"
+            inp="$(timeout 5s adb shell service check input 2>/dev/null || true)"
+            if [[ "$boot" == "1" && "$pkg" == *found* && "$inp" == *found* ]]; then ready=1; break; fi
+            if (( i % 10 == 0 )); then echo "Framework wait $i, boot=$boot, package=$pkg, input=$inp"; fi
             sleep 2
           done
           if [[ "$ready" != 1 ]]; then
@@ -46,7 +53,7 @@ jobs:
             exit 1
           fi
           sleep 5
-          bash demos-android/tools/smoke-android.sh
+          timeout 130s bash demos-android/tools/smoke-android.sh
       - name: Upload evidence
         if: always()
         uses: actions/upload-artifact@v4
