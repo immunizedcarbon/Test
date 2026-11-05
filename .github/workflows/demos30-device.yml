@@ -1,0 +1,60 @@
+name: DEMOS30 Android 17 device validation
+on:
+  push:
+    branches: [demos30-apk-build-20261105]
+    paths:
+      - '.github/workflows/demos30-device.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  emulator:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: DEMOS30-android17-apk
+          run-id: 42051831663
+          github-token: ${{ github.token }}
+          path: installed
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
+      - name: Install AOSP Android 17 emulator image
+        run: |
+          set -euxo pipefail
+          sudo chmod a+rw /dev/kvm
+          sdkmanager --install "platforms;android-37.0" "emulator" "system-images;android-37.0;google_apis;x86_64"
+          printf 'no\n' | avdmanager create avd --force -n demos-api37 --package 'system-images;android-37.0;google_apis;x86_64' --device 'pixel_6'
+      - name: Boot Android and run DEMOS guest verification
+        run: |
+          set -euxo pipefail
+          adb start-server
+          nohup emulator -avd demos-api37 -no-window -noaudio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -camera-back none -no-metrics > /tmp/emulator.log 2>&1 &
+          adb wait-for-device
+          ready=0
+          for i in $(seq 1 120); do
+            boot="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
+            if [[ "$boot" == "1" ]] && adb shell service check package | grep -q found && adb shell service check input | grep -q found; then ready=1; break; fi
+            sleep 2
+          done
+          if [[ "$ready" != 1 ]]; then
+            echo "Android framework services never became ready"
+            tail -90 /tmp/emulator.log
+            exit 1
+          fi
+          sleep 5
+          bash demos-android/tools/smoke-android.sh
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DEMOS30-Android17-device-evidence
+          path: |
+            /tmp/demos-logcat.txt
+            /tmp/demos-ui.xml
+            /tmp/demos-screen.png
+            /tmp/emulator.log
+          if-no-files-found: ignore
