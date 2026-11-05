@@ -4,6 +4,7 @@ on:
     branches: [demos30-apk-build-20261105]
     paths:
       - '.github/workflows/demos30-device.yml'
+      - 'demos-android/tools/smoke-android.sh'
 permissions:
   contents: read
   actions: read
@@ -62,6 +63,7 @@ jobs:
           path: |
             /tmp/demos-logcat.txt
             /tmp/demos-ui.xml
+            /tmp/demos-ui-final.xml
             /tmp/demos-screen.png
             /tmp/emulator.log
           if-no-files-found: ignore
