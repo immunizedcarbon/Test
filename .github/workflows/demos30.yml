@@ -1,0 +1,61 @@
+name: DEMOS30 emulator reference and Android research build
+on:
+  push:
+    branches: [demos30-apk-build-20261105]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reference:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install host build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libpcap-dev libpcre2-dev libvdeplug-dev libsdl2-dev unzip expect
+      - name: Build pinned DVK fork
+        run: |
+          set -euxo pipefail
+          git clone --filter=blob:none --single-branch --branch simh-dvk https://github.com/shattered/simh.git simh-dvk
+          cd simh-dvk
+          git checkout 6d424e6a2990172eeef283972b592d027b5ec1bc
+          make -j2 pdp11 2>&1 | tee ../build.log
+          file BIN/pdp11 || true
+          find . -name pdp11 -type f -ls | head
+      - name: Fetch preinstalled DEMOS 3.0 reference
+        run: |
+          set -euxo pipefail
+          curl -fLsS --retry 3 -o dvk-demos.zip https://storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/vak-opensource/dvk-demos.zip
+          sha256sum dvk-demos.zip
+          unzip -l dvk-demos.zip | tee archive.log
+          unzip -o -q dvk-demos.zip -d reference
+          find reference -maxdepth 3 -type f -printf '%p %s bytes\n' | tee reference-files.log
+      - name: Reference smoke boot
+        run: |
+          set -euxo pipefail
+          cat > reference/test.ini <<'EOF'
+          set LPT disable
+          set DZ disable
+          set cpu 11/23 256k cis idle
+          attach kmd0 floppy.img
+          attach kgd0 harddisk.img
+          boot kgd0
+          EOF
+          BIN="$(find "$GITHUB_WORKSPACE/simh-dvk" -type f -name pdp11 -perm /111 | head -1)"
+          cd reference
+          find . -type f -iname '*.img' -ls
+          timeout 30s script -q -e -c "$BIN test.ini" boot-raw.log || true
+          sed -n '1,200p' boot-raw.log | tee ../boot.log
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: demos30-reference-logs
+          path: |
+            build.log
+            archive.log
+            reference-files.log
+            boot.log
+          if-no-files-found: ignore
